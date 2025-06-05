@@ -50,6 +50,22 @@ if __name__ == '__main__':
     # ... (error handling example can be kept or removed)
 ```
 
+### Enabling Visualization
+
+The `compare_point_clouds` function includes an optional `visualize` parameter (default is `False`). If set to `True`, the script will display the point clouds:
+
+1.  **Before Registration**: Shows the original source point cloud (Yellow) and target point cloud (Blue).
+2.  **After Registration**: Shows the source point cloud transformed by ICP (Green) aligned with the target point cloud (Blue).
+
+To enable visualization, modify the call in the script:
+
+```python
+# Example call within the if __name__ == '__main__': block
+fitness, inlier_rmse = compare_point_clouds(file1, file2, visualize=True)
+```
+
+**Note:** When visualization is enabled, the script will open a window for each step (before and after registration). You must manually close each visualization window for the script to continue its execution, after which it will print the final metrics.
+
 ## Output Metrics
 
 -   **ICP Fitness**: This value ranges from 0 to 1. It represents the percentage of points in the source point cloud that have a corresponding point in the target point cloud within the specified `threshold` distance after alignment. A higher fitness score indicates a better alignment and more overlap between the point clouds.
