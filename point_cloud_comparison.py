@@ -1,17 +1,19 @@
 import open3d as o3d
 import copy # For deepcopy
 
-def compare_point_clouds(file_path1, file_path2, visualize=False):
+def compare_point_clouds(file_path1, file_path2, visualize=False, gui_mode=False):
     """
     Compares two point clouds using ICP registration and optionally visualizes them.
 
     Args:
         file_path1 (str): Path to the first point cloud file (source).
         file_path2 (str): Path to the second point cloud file (target).
-        visualize (bool): If True, displays the point clouds before and after registration.
+        visualize (bool): If True, displays the point clouds (behavior depends on gui_mode).
+        gui_mode (bool): If True, visualization calls are suppressed for GUI handling.
 
     Returns:
-        tuple: (fitness, inlier_rmse) if successful, (None, None) otherwise.
+        tuple: On success: (fitness, inlier_rmse, source_pcd, target_pcd, transformation_matrix)
+               On failure: (None, None, None, None, None)
     """
     try:
         # Read point clouds from files
@@ -23,15 +25,15 @@ def compare_point_clouds(file_path1, file_path2, visualize=False):
         if not source_pcd.has_points() or not target_pcd.has_points():
             print("Error: One or both point clouds are empty or could not be loaded.")
             print(f"Details: source_pcd empty: {not source_pcd.has_points()}, target_pcd empty: {not target_pcd.has_points()}")
-            return None, None
+            return None, None, None, None, None
 
     except Exception as e:
         print(f"Error loading point cloud files: {e}")
-        return None, None
+        return None, None, None, None, None
 
-    # Visualization - Before Registration
-    if visualize:
-        print("Visualizing point clouds before registration...")
+    # Visualization - Before Registration (only if visualize is True and not in GUI mode)
+    if visualize and not gui_mode:
+        print("Visualizing point clouds before registration (CLI mode)...")
         # Create deep copies for visualization to avoid altering original PCDs
         source_pcd_viz_orig = copy.deepcopy(source_pcd)
         target_pcd_viz_orig = copy.deepcopy(target_pcd)
@@ -85,11 +87,11 @@ def compare_point_clouds(file_path1, file_path2, visualize=False):
     # reg_p2p.fitness: The proportion of inlier correspondences (0.0 to 1.0). Higher is better.
     # reg_p2p.inlier_rmse: RMSE of inlier correspondences. Lower is better.
 
-    # Visualization - After Registration
-    if visualize:
-        print("Visualizing point clouds after registration...")
+    # Visualization - After Registration (only if visualize is True and not in GUI mode)
+    if visualize and not gui_mode:
+        print("Visualizing point clouds after registration (CLI mode)...")
         # Create a deep copy of the original source PCD for transformation visualization
-        source_pcd_transformed_viz = copy.deepcopy(source_pcd)
+        source_pcd_transformed_viz = copy.deepcopy(source_pcd) # Use the original PCD for transformation
         source_pcd_transformed_viz.transform(reg_p2p.transformation)
         source_pcd_transformed_viz.paint_uniform_color([0, 0.8, 0]) # Green for transformed source
 
@@ -105,7 +107,7 @@ def compare_point_clouds(file_path1, file_path2, visualize=False):
             width=800, height=600
         )
 
-    return reg_p2p.fitness, reg_p2p.inlier_rmse
+    return reg_p2p.fitness, reg_p2p.inlier_rmse, source_pcd, target_pcd, reg_p2p.transformation
 
 if __name__ == '__main__':
     # --- Example Usage ---
@@ -131,36 +133,36 @@ if __name__ == '__main__':
     o3d.io.write_point_cloud("dummy_pcd2.pcd", pcd2_data)
     print("Created dummy_pcd2.pcd")
 
-    # Run comparison WITH visualization
-    print("\nAttempting to compare dummy_pcd1.pcd and dummy_pcd2.pcd WITH VISUALIZATION...")
-    # Set visualize=True to see the point clouds
-    fitness, inlier_rmse = compare_point_clouds("dummy_pcd1.pcd", "dummy_pcd2.pcd", visualize=True)
+    # Run comparison WITH visualization (CLI mode, gui_mode=False is default)
+    print("\nAttempting to compare dummy_pcd1.pcd and dummy_pcd2.pcd WITH VISUALIZATION (CLI)...")
+    # Set visualize=True to see the Open3D windows
+    fitness, inlier_rmse, _, _, _ = compare_point_clouds("dummy_pcd1.pcd", "dummy_pcd2.pcd", visualize=True) # Unpack 5, use 2
 
     if fitness is not None and inlier_rmse is not None:
-        print(f"  ICP Fitness (with visualization): {fitness:.4f} (Proportion of inlier correspondences)")
-        print(f"  ICP Inlier RMSE (with visualization): {inlier_rmse:.4f} (RMSE of inlier correspondences)")
+        print(f"  ICP Fitness (CLI visualization): {fitness:.4f} (Proportion of inlier correspondences)")
+        print(f"  ICP Inlier RMSE (CLI visualization): {inlier_rmse:.4f} (RMSE of inlier correspondences)")
     else:
-        print("  Point cloud comparison (with visualization) failed for dummy files.")
+        print("  Point cloud comparison (CLI visualization) failed for dummy files.")
 
-    # Run comparison WITHOUT visualization (as before)
-    print("\nAttempting to compare dummy_pcd1.pcd and dummy_pcd2.pcd WITHOUT VISUALIZATION...")
-    fitness_no_viz, inlier_rmse_no_viz = compare_point_clouds("dummy_pcd1.pcd", "dummy_pcd2.pcd", visualize=False)
+    # Run comparison WITHOUT visualization (CLI mode)
+    print("\nAttempting to compare dummy_pcd1.pcd and dummy_pcd2.pcd WITHOUT VISUALIZATION (CLI)...")
+    fitness_no_viz, inlier_rmse_no_viz, _, _, _ = compare_point_clouds("dummy_pcd1.pcd", "dummy_pcd2.pcd", visualize=False)
 
     if fitness_no_viz is not None and inlier_rmse_no_viz is not None:
-        print(f"  ICP Fitness (no visualization): {fitness_no_viz:.4f} (Proportion of inlier correspondences)")
-        print(f"  ICP Inlier RMSE (no visualization): {inlier_rmse_no_viz:.4f} (RMSE of inlier correspondences)")
+        print(f"  ICP Fitness (CLI no visualization): {fitness_no_viz:.4f} (Proportion of inlier correspondences)")
+        print(f"  ICP Inlier RMSE (CLI no visualization): {inlier_rmse_no_viz:.4f} (RMSE of inlier correspondences)")
     else:
-        print("  Point cloud comparison (no visualization) failed for dummy files.")
+        print("  Point cloud comparison (CLI no visualization) failed for dummy files.")
 
 
-    # 2. Example with non-existent files to test error handling (visualization flag won't matter here).
-    # This demonstrates that the function handles file loading errors gracefully.
-    print("\n--- Running Test with Non-Existent Point Clouds (Visualization True) ---")
-    print("Attempting to compare non_existent1.pcd and non_existent2.pcd with visualize=True...")
-    fitness_err, inlier_rmse_err = compare_point_clouds("non_existent1.pcd", "non_existent2.pcd", visualize=True)
+    # 2. Example with non-existent files to test error handling.
+    # The gui_mode flag doesn't affect error handling returns.
+    print("\n--- Running Test with Non-Existent Point Clouds (CLI, Visualization True) ---")
+    print("Attempting to compare non_existent1.pcd and non_existent2.pcd with visualize=True (CLI)...")
+    f_err, r_err, _, _, _ = compare_point_clouds("non_existent1.pcd", "non_existent2.pcd", visualize=True)
 
-    if fitness_err is None and inlier_rmse_err is None:
-        print("  Point cloud comparison failed as expected for non-existent files (visualization True).")
+    if f_err is None and r_err is None:
+        print("  Point cloud comparison failed as expected for non-existent files (CLI, visualization True).")
     else:
         # This case should ideally not be reached if error handling is correct
         print(f"  ICP Fitness: {fitness_err}")
@@ -174,10 +176,10 @@ if __name__ == '__main__':
     #
     # # Ensure these files exist before running, or handle potential errors.
     # # When using your own files, you can enable visualization like this:
-    # # fitness_custom, inlier_rmse_custom = compare_point_clouds(my_file1, my_file2, visualize=True)
+    # # fitness_custom, inlier_rmse_custom, _, _, _ = compare_point_clouds(my_file1, my_file2, visualize=True)
     # #
     # # if fitness_custom is not None:
-    # #     print(f"Custom ICP Fitness: {fitness_custom:.4f}")
+    # #     print(f"Custom ICP Fitness (CLI): {fitness_custom:.4f}")
     # #     print(f"Custom ICP Inlier RMSE: {inlier_rmse_custom:.4f}")
     # # else:
     # #     print(f"Point cloud comparison failed for {my_file1} and {my_file2}.")
